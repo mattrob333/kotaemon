@@ -9,6 +9,9 @@ Jinja2==3.1.4
 # GraphRAG and related dependencies
 graphrag==0.3.6
 future==1.0.0
+torch==2.5.1+cpu
+torchvision==0.20.1+cpu
+torchaudio==2.5.1+cpu
 
 # Document processing and unstructured data
 unstructured[all-docs]==0.15.14
