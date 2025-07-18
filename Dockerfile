@@ -43,8 +43,11 @@ COPY .env.example /app/.env
 COPY requirements.txt .
 
 # --- CONSOLIDATED PYTHON INSTALLATION ---
-# Install all Python dependencies from the fully pinned requirements file in a single, unambiguous step.
-# The requirements.txt file itself specifies the correct index URL for PyTorch.
+# STEP 1: Install PyTorch packages from their dedicated server.
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --no-cache-dir torch==2.5.1+cpu torchvision==0.20.1+cpu torchaudio==2.5.1+cpu --index-url https://download.pytorch.org/whl/cpu
+
+# STEP 2: Install all other dependencies from the standard PyPI using requirements.txt.
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --no-cache-dir -r requirements.txt
 
