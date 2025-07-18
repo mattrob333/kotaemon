@@ -1,5 +1,5 @@
 # Main Application Dependencies
-fastapi<=0.112.1
+fastapi
 uvicorn[standard]>=0.18.3
 python-dotenv<1.1,>=1.0.1
 Jinja2<4.0.0,>=2.7
