@@ -1,22 +1,27 @@
-# Tell pip to look for the following packages on PyTorch's server first
---index-url https://download.pytorch.org/whl/cpu
-
-# Pinned PyTorch versions
-torch==2.5.1+cpu
-torchvision==0.20.1+cpu
-torchaudio==2.5.1+cpu
+# This file contains fully pinned dependencies to ensure a reproducible build.
 
 # Main Application Dependencies
 fastapi==0.111.0
 uvicorn[standard]==0.29.0
 python-dotenv==1.0.1
 Jinja2==3.1.4
+pydantic==2.7.1
+starlette==0.37.2
 
-# Core Kotaemon and Ktem libraries are handled via PYTHONPATH in the Dockerfile
-
-# GraphRAG and related dependencies
+# GraphRAG and its specific dependencies
 graphrag==0.3.6
-future==1.0.0
+tenacity==9.1.2
+umap-learn==0.5.6
+nltk==3.9.1
+networkx==3.3
+pyyaml==6.0.1
+pyaml-env==1.2.2
+json-repair==0.28.4
+lancedb==0.13.0
+pyarrow==15.0.2
+datashaper==0.0.49
+graspologic==3.4.1
+environs==11.2.1
 
 # Document processing and unstructured data
 unstructured[all-docs]==0.15.14
@@ -43,14 +48,10 @@ llama-index-vector-stores-milvus==0.8.6
 elasticsearch==8.13.2
 
 # Other utilities
+future==1.0.0
 aioboto3==15.0.0
 nano-vectordb==0.0.4.3
 ollama==0.5.1
 xxhash==3.5.0
 lightrag-hku==1.3.0
 pdfservices-sdk@git+https://github.com/niallcm/pdfservices-python-sdk.git@bump-and-unfreeze-requirements
-
-# Explicitly pinned versions to resolve deep conflicts
-tenacity==9.1.2
-umap-learn==0.5.6
-pydantic==2.9.2
