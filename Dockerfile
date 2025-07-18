@@ -44,6 +44,7 @@ COPY requirements.txt .
 
 # --- CONSOLIDATED PYTHON INSTALLATION ---
 # Install all Python dependencies from the fully pinned requirements file in a single, unambiguous step.
+# The requirements.txt file itself specifies the correct index URL for PyTorch.
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --no-cache-dir -r requirements.txt
 
