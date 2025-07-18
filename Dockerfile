@@ -1,7 +1,7 @@
-# Lite version
-FROM python:3.10-slim AS lite
+# Base stage for both Lite and Full versions
+FROM python:3.10-slim AS base
 
-# Common dependencies
+# Common system dependencies
 RUN apt-get update -qqy && \
     apt-get install -y --no-install-recommends \
         ssh \
@@ -14,7 +14,7 @@ RUN apt-get update -qqy && \
         curl \
         cargo
 
-# Setup args
+# Setup args for platform and architecture
 ARG TARGETPLATFORM
 ARG TARGETARCH
 
@@ -28,39 +28,43 @@ ENV TARGETARCH=${TARGETARCH}
 WORKDIR /app
 
 # Download pdfjs
-COPY scripts/download_pdfjs.sh /app/scripts/download_pdfjs.sh
-RUN chmod +x /app/scripts/download_pdfjs.sh
+COPY scripts/download_pdf_js.sh /app/scripts/download_pdf_js.sh
+RUN chmod +x /app/scripts/download_pdf_js.sh
 ENV PDFJS_PREBUILT_DIR="/app/libs/ktem/ktem/assets/prebuilt/pdfjs-dist"
-RUN bash scripts/download_pdfjs.sh $PDFJS_PREBUILT_DIR
+RUN bash scripts/download_pdf_js.sh $PDFJS_PREBUILT_DIR
 
-# Copy contents
+# Copy application code and requirements file first
 COPY . /app
 COPY launch.sh /app/launch.sh
 COPY .env.example /app/.env
+COPY requirements.txt .
 
-# Install pip packages
-RUN --mount=type=ssh  \
-    --mount=type=cache,target=/root/.cache/pip  \
-    pip install -e "libs/kotaemon" \
-    && pip install -e "libs/ktem" \
-    && pip install "pdfservices-sdk@git+https://github.com/niallcm/pdfservices-python-sdk.git@bump-and-unfreeze-requirements"
+# --- CONSOLIDATED PYTHON INSTALLATION ---
+# Install all Python dependencies from the requirements file in a single step.
+# This ensures pip's resolver can create a compatible environment for the full application.
+# It also includes PyTorch, which is needed for the full and ollama versions.
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir -r requirements.txt
 
-RUN --mount=type=ssh  \
-    --mount=type=cache,target=/root/.cache/pip  \
-    if [ "$TARGETARCH" = "amd64" ]; then pip install "graphrag<=0.3.6" future; fi
+# --- Lite version ---
+# The 'lite' version is now a slimmed-down final stage that pulls from the 'base'
+FROM base AS lite
 
-# Clean up
-RUN apt-get autoremove \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
-    && rm -rf ~/.cache
+# Clean up system packages for the lite version
+RUN apt-get autoremove -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    rm -rf ~/.cache
 
 ENTRYPOINT ["sh", "/app/launch.sh"]
 
-# Full version
-FROM lite AS full
 
-# Additional dependencies for full version
+# --- Full version ---
+# This stage builds on the 'base' stage which already has all python packages installed
+FROM base AS full
+
+# Install additional system dependencies needed for the 'full' version
 RUN apt-get update -qqy && \
     apt-get install -y --no-install-recommends \
         tesseract-ocr \
@@ -71,48 +75,26 @@ RUN apt-get update -qqy && \
         ffmpeg \
         libmagic-dev
 
-# Install torch and torchvision for unstructured
-RUN --mount=type=ssh  \
-    --mount=type=cache,target=/root/.cache/pip  \
-    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-
-# Install additional pip packages
-RUN --mount=type=ssh  \
-    --mount=type=cache,target=/root/.cache/pip  \
-    pip install -e "libs/kotaemon[adv]" \
-    && pip install unstructured[all-docs]
-
-# Install lightRAG
-ENV USE_LIGHTRAG=true
-RUN --mount=type=ssh  \
-    --mount=type=cache,target=/root/.cache/pip  \
-    pip install aioboto3 nano-vectordb ollama xxhash "lightrag-hku<=1.3.0"
-
-RUN --mount=type=ssh  \
-    --mount=type=cache,target=/root/.cache/pip  \
-    pip install "docling<=2.5.2"
-
-
-# Download NLTK data from LlamaIndex
+# Download NLTK data required by a dependency
 RUN python -c "from llama_index.core.readers.base import BaseReader"
 
-# Clean up
-RUN apt-get autoremove \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
-    && rm -rf ~/.cache
+# Clean up system packages
+RUN apt-get autoremove -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    rm -rf ~/.cache
 
 ENTRYPOINT ["sh", "/app/launch.sh"]
 
-# Ollama-bundled version
+
+# --- Ollama-bundled version ---
+# This builds on the 'full' stage
 FROM full AS ollama
 
 # Install ollama
-RUN --mount=type=ssh  \
-    --mount=type=cache,target=/root/.cache/pip  \
-    curl -fsSL https://ollama.com/install.sh | sh
+RUN curl -fsSL https://ollama.com/install.sh | sh
 
-# RUN nohup bash -c "ollama serve &" && sleep 4 && ollama pull qwen2.5:7b
+# Download the ollama model during the build
 RUN nohup bash -c "ollama serve &" && sleep 4 && ollama pull nomic-embed-text
 
 ENTRYPOINT ["sh", "/app/launch.sh"]
