@@ -28,7 +28,7 @@ ENV TARGETARCH=${TARGETARCH}
 WORKDIR /app
 
 # Download pdfjs
-COPY scripts/download_pdf_js.sh /app/scripts/download_pdf_js.sh
+COPY scripts/download_pdfjs.sh /app/scripts/download_pdfjs.sh
 RUN chmod +x /app/scripts/download_pdf_js.sh
 ENV PDFJS_PREBUILT_DIR="/app/libs/ktem/ktem/assets/prebuilt/pdfjs-dist"
 RUN bash scripts/download_pdf_js.sh $PDFJS_PREBUILT_DIR
