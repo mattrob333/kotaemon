@@ -24,6 +24,9 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONIOENCODING=UTF-8
 ENV TARGETARCH=${TARGETARCH}
 
+# Add local libraries to the Python path so they can be imported
+ENV PYTHONPATH="${PYTHONPATH}:/app/libs"
+
 # Create working directory
 WORKDIR /app
 
@@ -40,28 +43,23 @@ COPY .env.example /app/.env
 COPY requirements.txt .
 
 # --- CONSOLIDATED PYTHON INSTALLATION ---
-# Install all Python dependencies from the requirements file in a single step.
-# This ensures pip's resolver can create a compatible environment for the full application.
-# It also includes PyTorch, which is needed for the full and ollama versions.
+# Install all Python dependencies from the fully pinned requirements file in a single, unambiguous step.
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu && \
     pip install --no-cache-dir -r requirements.txt
 
 # --- Lite version ---
-# The 'lite' version is now a slimmed-down final stage that pulls from the 'base'
 FROM base AS lite
 
 # Clean up system packages for the lite version
 RUN apt-get autoremove -y && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/* && \
+    rm -rf /var/lib/apt/lists/* \
     rm -rf ~/.cache
 
 ENTRYPOINT ["sh", "/app/launch.sh"]
 
 
 # --- Full version ---
-# This stage builds on the 'base' stage which already has all python packages installed
 FROM base AS full
 
 # Install additional system dependencies needed for the 'full' version
@@ -81,14 +79,13 @@ RUN python -c "from llama_index.core.readers.base import BaseReader"
 # Clean up system packages
 RUN apt-get autoremove -y && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/* && \
+    rm -rf /var/lib/apt/lists/* \
     rm -rf ~/.cache
 
 ENTRYPOINT ["sh", "/app/launch.sh"]
 
 
 # --- Ollama-bundled version ---
-# This builds on the 'full' stage
 FROM full AS ollama
 
 # Install ollama
